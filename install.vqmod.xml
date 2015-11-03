@@ -1,0 +1,190 @@
+<modification>
+	<name>QQ与微博登录</name>
+	<code>opencart_qq_weibo_login</code>
+	<version>1.0</version>
+
+	<file path="admin/language/english/common/menu.php">
+		<operation error="skip">
+			<search><![CDATA[$_['text_error_log']]]></search>
+			<add position="after"><![CDATA[
+				$_['text_qq_login']           =  'QQ API Setting';
+				$_['text_weibo_login']        =  'Weibo API Setting';
+			]]></add>
+		</operation>
+	</file>
+
+	<file path="admin/language/zh-CN/common/menu.php">
+		<operation error="skip">
+			<search><![CDATA[$_['text_error_log']]]></search>
+			<add position="after"><![CDATA[
+				$_['text_qq_login']           =  'QQ API 配置';
+				$_['text_weibo_login']        =  'Weibo API 配置';
+			]]></add>
+		</operation>
+	</file>
+
+	<file path="admin/language/zh-HK/common/menu.php">
+		<operation error="skip">
+			<search><![CDATA[$_['text_error_log']]]></search>
+			<add position="after"><![CDATA[
+				$_['text_qq_login']           =  'QQ API 配置';
+				$_['text_weibo_login']        =  'Weibo API 配置';
+			]]></add>
+		</operation>
+	</file>
+
+	<file path="admin/controller/common/menu.php">
+		<operation error="skip">
+			<search><![CDATA[$this->language->get('text_error_log');]]></search>
+			<add position="after"><![CDATA[
+				$data['text_qq_login'] = $this->language->get('text_qq_login');
+				$data['text_weibo_login'] = $this->language->get('text_weibo_login');
+			]]></add>
+		</operation>
+		<operation error="skip">
+			<search><![CDATA[$data['error_log']]></search>
+			<add position="after"><![CDATA[
+				$data['qq_login'] = $this->url->link('tool/qq_login', 'token=' . $this->session->data['token'], 'SSL');
+				$data['weibo_login'] = $this->url->link('tool/weibo_login', 'token=' . $this->session->data['token'], 'SSL');
+			]]></add>
+		</operation>
+	</file>
+
+	<file path="admin/view/template/common/menu.tpl">
+		<operation error="skip">
+			<search><![CDATA[<li><a href="<?php echo $error_log; ?>"><?php echo $text_error_log; ?></a></li>]]></search>
+			<add position="after"><![CDATA[
+				<li><a href="<?php echo $qq_login; ?>"><?php echo $text_qq_login; ?></a></li>
+      			<li><a href="<?php echo $weibo_login; ?>"><?php echo $text_weibo_login; ?></a></li>
+			]]></add>
+		</operation>
+	</file>
+	
+	<file path="system/library/customer.php">
+		<operation error="skip">
+			<search><![CDATA[public function logout() {]]></search>
+			<add position="before"><![CDATA[
+				
+	public function loginThridPart($data) {
+
+		if (!empty($data) && isset($data['customer_id']) && $data['customer_id']) {
+
+			$customer_id = $data['customer_id'];
+		
+			$customer_query = $this->db->query("SELECT * FROM " . DB_PREFIX . "customer WHERE customer_id = '" . (int)$customer_id . "' AND status = '1' AND approved = '1'");
+			
+
+			if ($customer_query->num_rows) {
+				$this->session->data['customer_id'] = $customer_query->row['customer_id'];
+
+				if ($customer_query->row['cart'] && is_string($customer_query->row['cart'])) {
+					$cart = unserialize($customer_query->row['cart']);
+
+					foreach ($cart as $key => $value) {
+						if (!array_key_exists($key, $this->session->data['cart'])) {
+							$this->session->data['cart'][$key] = $value;
+						} else {
+							$this->session->data['cart'][$key] += $value;
+						}
+					}
+				}
+
+				if ($customer_query->row['wishlist'] && is_string($customer_query->row['wishlist'])) {
+					if (!isset($this->session->data['wishlist'])) {
+						$this->session->data['wishlist'] = array();
+					}
+
+					$wishlist = unserialize($customer_query->row['wishlist']);
+
+					foreach ($wishlist as $product_id) {
+						if (!in_array($product_id, $this->session->data['wishlist'])) {
+							$this->session->data['wishlist'][] = $product_id;
+						}
+					}
+				}
+
+				$this->customer_id = $customer_query->row['customer_id'];
+				$this->fullname = $customer_query->row['fullname'];
+				$this->email = $customer_query->row['email'];
+				$this->telephone = $customer_query->row['telephone'];
+				$this->fax = $customer_query->row['fax'];
+				$this->newsletter = $customer_query->row['newsletter'];
+				$this->customer_group_id = $customer_query->row['customer_group_id'];
+				$this->address_id = $customer_query->row['address_id'];
+
+				$this->db->query("UPDATE " . DB_PREFIX . "customer SET ip = '" . $this->db->escape($this->request->server['REMOTE_ADDR']) . "' WHERE customer_id = '" . (int)$this->customer_id . "'");
+
+				return true;
+			} else {
+				return false;
+			}
+		} else {
+			return false;
+		}
+	}
+
+			]]></add>
+		</operation>
+	</file>
+
+	<file path="catalog/controller/account/login.php">
+		<operation error="skip">
+			<search><![CDATA[$data['column_left'] = $this->load->controller('common/column_left');]]></search>
+			<add position="before"><![CDATA[
+
+		$data['qq_login_status'] = $this->config->get('qq_login_status');
+		if($data['qq_login_status']) {
+			$data['qq_login_appid'] = $this->config->get('qq_login_appid');
+			$data['qq_login_action'] = $this->url->link('account/qq_login');
+		}
+
+		$data['weibo_login_status'] = $this->config->get('weibo_login_status');
+		if($data['weibo_login_status']) {
+			require_once(DIR_SYSTEM.'weiboSDK/oauth2.class.php');
+			$o = new SaeTOAuthV2($this->config->get('weibo_login_appkey') , $this->config->get('weibo_login_secret'));
+			$data['weibo_code_url'] = $o->getAuthorizeURL($this->url->link('account/weibo_login'));
+		}
+
+			]]></add>
+		</operation>
+	</file>
+		
+	<file path="catalog/view/theme/*/template/account/login.tpl">
+		<operation error="skip">
+			<search><![CDATA[</form>]]></search>
+			<add position="after"><![CDATA[
+
+			<?php if ($qq_login_status) { ?>
+            <form action="<?php echo $qq_login_action; ?>" id="qq_login_account" method="post" style="display: inline-block; margin: 16px 20px 0 0;">
+              <span id="qqLoginBtn"></span>
+              <input type="hidden" name="openid" id="openid" value="" />
+            </form>
+            <script type="text/javascript" src="//qzonestyle.gtimg.cn/qzone/openapi/qc_loader.js" data-appid="<?php echo $qq_login_appid; ?>" charset="utf-8" ></script>
+            <script type="text/javascript">
+              QC.Login.signOut(); 
+              QC.Login({
+                btnId : "qqLoginBtn",
+                size : "B_M",
+                scope : "get_user_info",
+                display : "pc"
+              },function(){
+                var dom = document.getElementById('openid');
+                var c_loginaccount = document.getElementById('qq_login_account');
+                QC.Login.getMe(function(openId, accessToken){
+                  dom.value = openId;
+                  c_loginaccount.submit();
+                });
+              },function(){
+              });
+            </script> 
+            <?php } ?>
+
+            <?php if ($weibo_login_status) { ?>
+            <a href="<?php echo $weibo_code_url?>" style="display: inline-block; margin: 16px 0 0 0"><img src="<?php echo HTTP_SERVER ?>catalog/view/theme/default/image/weibo_button.png" /></a>
+            <?php } ?>
+
+			]]></add>
+		</operation>
+	</file>
+
+</modification>
